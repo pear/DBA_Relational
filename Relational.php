@@ -26,7 +26,6 @@
 require_once 'PEAR.php';
 require_once 'DBA/Table.php';
 require_once 'DBA/TempTable.php';
-require_once 'SQL/Lexer.php';
 
 /**
  * A relational database manager using DBA_Table as a storage object.
@@ -511,58 +510,73 @@ class DBA_Relational extends PEAR
     }
     // }}}
 
-    // {{{ function _parseQuery($rawQuery)
-    function _parseQuery($rawQuery)
+    // {{{ function _parsePHPQuery($rawQuery)
+    function _parsePHPQuery($rawQuery)
     {
+        $inQuote = false;
         $PHPQuery = '';
-        $lexer = new Lexer($rawQuery,1);
-        $lexer->symbols = array('and'=>1, 'or'=>1);
-        $token = $lexer->lex();
-        while(!is_null($token)) {
-            switch($token) {
-                case 'and':
-                case 'or':
-                    $PHPQuery .= ' '.$lexer->tokText.' ';
-                    break;
-                case 'ident':
-                    $token = strtolower($lexer->tokText);
-                    if (isset($this->_functions[$token]) {
-                        $PHPQuery .= 'DBA_Functions::'.$token;
-                    } elseif (function_exists($lexer->tokText)) {
-                        $PHPQuery .= $lexer->tokText;
-                    } else {
-                        $prevText = $lexer->tokText;
-                        $token = $lexer->lex();
-                        if ($token == '.') {
-                            $token = $lexer->lex();
-                            if ($token == 'ident') {
-                                $PHPQuery .= '$row[\''.
-                                    $prevText.'.'.$lexer->tokText.'\']';
-                            } else {
-                                return $this->raiseError(
-                                    "invalid token. need field token");
-                            }
-                        } else {
-                            $PHPQuery .= '$row["'.$prevText.'"]';
-                            $lexer->pushBack();
-                        }
+        $token = '';
+
+        for($i=0; $i < strlen($rawQuery); $i++) {
+            $c = $rawQuery{$i};
+            switch($c) {
+                case "'":
+                case '"':
+                    if (!$inQuote) {
+                        $inQuote = !$inQuote;
+                        $quote = $c;
+                    } elseif ($c == $quote) {
+                        $inQuote = !$inQuote;
+                        $quote = '';
                     }
                     break;
-                case 'text_val':
-                    $PHPQuery .= '"'.$lexer->tokText.'"';
+                case ' ':  case '=':  case '<':  case '>':
+                case '!':  case '(':  case ')':  case '&':
+                case '|':  case '*':  case '/':  case '+':
+                case '-':  case '%':  case ',':
+                    if (!$inQuote && strlen($token)) {
+                        $PHPQuery .= $this->_cookIdentToken($token);
+                        $PHPQuery .= $c;
+                        $token = '';
+                    } elseif ($inQuote) {
+                        $token .= $c;
+                    } else {
+                        $PHPQuery .= $c;
+                    }
                     break;
-                case 'real_val':
-                case 'int_val':
                 default :
-                    $PHPQuery .= $lexer->tokText;
-                    break;
+                    $token .= $c;
+                break;
             }
-            $token = $lexer->lex();
+        }
+        if (strlen($token)) {
+            $PHPQuery .= $this->_cookIdentToken($token);
         }
         return $PHPQuery;
     }
     // }}}
 
+    // {{{ function _cookIdentToken($token)
+    function _cookIdentToken($token)
+    {
+        // quoted string
+        if ($token{0} == "'" && $token{0} == "\"") {
+            $cookedToken .= $token;
+        } elseif ($token == 'null' || $token == 'and' || $token == 'or' ||
+                  $token == 'false' || $token == 'true'
+                  || function_exists($token)) {
+            $cookedToken .= $token;
+        } elseif (isset($this->_functions[$token])) {
+            $cookedToken .= 'DBA_Function::'.$token;
+        } elseif (!is_numeric($token)) {
+            $cookedToken .= '$row[\''.$token.'\']';
+        } else {
+            $cookedToken .= $token;
+        }
+        return $cookedToken;
+    }
+    // }}}
+    
     // {{{ select($tableName, $query, $rows=null)
     /**
      * Performs a select on a table. This means that a subset of rows in a
@@ -573,100 +587,34 @@ class DBA_Relational extends PEAR
      *
      * @access  public
      * @param   string $tableName table on which to operate
-     * @param   string $rawQuery query expression for performing the select
-     * @param   array  $rows rows to select on
+     * @param   string $query query expression for performing the select
      * @return  mixed  PEAR_Error on failure, the row array on success
      */
-/*
-    function select($tableName, $query, $rows=null)
+    function select($table, $query='*', $rows=null)
     {
-        $result = $this->_openTable($tableName, 'r');
+        $result = $this->_openTable($table,'r');
         if (PEAR::isError($result)) {
             return $result;
-        } else {
-            return $this->_tables[$tableName]->select($query, $rows);
-        }
-    }
-*/
-    // }}}
-
-    function select($tableName, $query, $rows=null)
-    {
-        $tables = $this->_parseTableString($tableName);
-
-        $result = $this->_openTable($tables['name'][0],'r');
-        if (PEAR::isError($result))
-            return $result;
-        $rows = $this->_tables[$tables['name'][0]]->getRows();
-        if ($tables['name'][0] == $tables['alias'][0])
-            $tables['alias'][0] = '';
-        $tblObject = new DBA_TempTable(&$rows, $tables['alias'][0]);
-
-        if (strlen($query)) {
-            if ($query == '*') {
-                $PHPQuery = true;
-            } else {
-                $PHPQuery = $this->_parseQuery($query);
-            }
-        } else {
-            $PHPQuery = true;
         }
 
-        $rows = array();
+        $rows = $this->_tables[$table]->getRows();
 
-        $key = $tblObject->firstRow();
-        while ($key !== false) {
-            $row = $tblObject->getRow($key);
-            @eval('$isMatch = ('.$PHPQuery.') ? 1:0;');
-            if ($isMatch)
-                $rows[] = $row;
-            $key = $tblObject->nextRow();
+        if ($query == '*') {
+            return $rows;
         }
 
-        return $rows;
+        $PHPQuery = $this->_parsePHPQuery($query);
+
+        $PHPSelect = 'foreach ($rows as $key=>$row) if ('.
+                      $PHPQuery.') $results[$key] = $row;';
+        echo("$PHPSelect\n");
+
+        $results = null;
+        eval ($PHPSelect);
+        return $results;
     }
     // }}}
 
-    // {{{ _parsePHPQuery($rawQuery, $fieldsA, $fieldsB, $tableA, $tableB)
-    /**
-     * Constructs a PHP query based on $rawQuery
-     * @access private
-     */
-    function _parsePHPQuery($rawQuery, $fieldsA, $fieldsB, $tableA, $tableB)
-    {
-        // add spaces around symbols for explode to work properly
-        $cookedQuery = DBA_Table::_cookQuery($rawQuery);
-
-        // begin building the php query for a row
-        $phpQuery = '';
-
-        // scan the tokens in the raw query to build a new query
-        // if the token is a field name, use it as a key in $rowN[]
-        $tokens = explode(' ', $cookedQuery);
-        foreach ($tokens as $token) {
-            // is this token a field name?
-            if ($i = strpos($token, '.')) {
-                // trim everything after the '.'
-                $table = substr($token, 0, $i);
-                if (($table != $tableA) && ($table != $tableB)) {
-                    return $this->raiseError("$table is not a table in join");
-                }
-
-                // trim everything before the '.'
-                $field = substr($token, $i+1);
-                if (($table == $tableA) && in_array($field, $fieldsA)) {
-                    $phpQuery .= "\$rowA['$field']";
-                } elseif (($table == $tableB) && in_array($field, $fieldsB)) {
-                    $phpQuery .= "\$rowB['$field']";
-                }
-            } else {
-                $phpQuery .= $token;
-            }
-        }
-        return $phpQuery;
-    }
-    // }}}
-    
     // {{{ join($tableA, $tableB, $rawQuery)
     /**
      * Joins rows between two tables based on a query.
