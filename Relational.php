@@ -231,7 +231,7 @@ class DBA_Relational extends PEAR
             unset($this->_tables[$tableName]);
         }
 
-        return DBA::drop($tableName, $driver);
+        return DBA::db_drop($tableName, $driver);
     }
     // }}}
     
