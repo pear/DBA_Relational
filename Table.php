@@ -463,7 +463,9 @@ class DBA_Table extends PEAR
                         if (is_string($element)) {
                             $c_element = array_search($element,
                                          $this->_schema[$field]['domain']);
-                            if (!is_null($c_element)) {
+                            // check for both null and false for backwards
+                            // compatibility
+                            if (!is_null($c_element) && ($c_element!==false)) {
                                 $c_value[] = $c_element;
                             }
                         }
@@ -1003,7 +1005,7 @@ class DBA_Table extends PEAR
         $inString = false;
         $cookedQuery = '';
         for ($i=0; $i < strlen($query); ++$i) {
-            $chr = $query[$i];
+            $chr = $query{$i};
             if ($chr =='\'') {
                 $inString = !$inString;
                 $cookedQuery .= $chr;

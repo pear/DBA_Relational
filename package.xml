@@ -27,10 +27,12 @@ Table management extension to DBA
     <release>
         <license>LGPL</license>
         <version>0.20</version>
-        <date>2002-10-05</date>
+        <date>2002-10-22</date>
         <state>devel</state>
         <notes>
-Added a HTML Table formatting function to Toolbox.php
+ * Added a HTML Table formatting function to Toolbox.php
+ * Added new unary functions (avg, min, max, sum, count)
+ * Bug fixes
         </notes>
         <filelist>
             <dir name="/" baseinstalldir="/DBA">
