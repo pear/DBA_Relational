@@ -1006,6 +1006,48 @@ class DBA_Table extends PEAR
     }
     // }}}
 
+
+	// {{{ firstRow()
+	/**
+ 	 * Returns the first row in the table. The built-in cursor for the
+     * internal _dba object is used, so no other operations should be performed
+     * other than nextRow() if iterating through the rows is the desired
+     * operation
+	 *
+     * @access public
+     * @return  mixed PEAR_Error on failure, the row array on success
+	 *                or false if there are no elements in the table
+     *                i.e (firstRow() === false) = table is empty
+	 */
+    function firstRow()
+    {
+        if ($this->_dba->isOpen()) {
+			$key = $this->_dba->firstkey();
+			return $this->_unpackRow($this->_dba->fetch($key));
+        } else {
+            return $this->raiseError('table not open');
+        }
+	}
+	// }}}
+
+	// {{{ firstRow()
+	/**
+ 	 * Returns the next row in the table after a firstRow or nextRow.
+	 *
+     * @access public
+     * @return  mixed PEAR_Error on failure, the row array on success
+	 *                or false if there are no more elements in the table
+	 */
+	function nextRow() {
+        if ($this->_dba->isOpen()) {
+			$key = $this->_dba->nextkey();
+			return $this->_unpackRow($this->_dba->fetch($key));
+        } else {
+            return $this->raiseError('table not open');
+        }
+	}
+	// }}}
+
     // {{{
     /**
      * Returns all keys in the table
