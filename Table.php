@@ -1063,8 +1063,14 @@ class DBA_Table extends PEAR
                     $PHPQuery .= $c;
                 }
             } elseif ($c == "\t" || $c == "\n" || $c == "\r") {
-                if ($inQuote) {
+                if (!$inQuote && strlen($token)) {
+                    $PHPQuery .= _cookToken($token);
+                    $PHPQuery .= $c;
+                    $token = '';
+                } elseif ($inQuote) {
                     $token .= $c;
+                } else {
+                    $PHPQuery .= $c;
                 }
             } else {
                 $token .= $c;
