@@ -31,6 +31,15 @@ if (!function_exists('floatval')) {
     }
 }
 
+if (!isset($_dba_functions)) {
+    $_dba_functions = array_flip(get_class_methods('DBA_Functions'));
+}
+
+if (!isset($_dba_operators)) {
+    $_dba_operators = array_flip(array('=','<','>','!','(',')','&','|',
+                                        '*','/','+','-','%',','));
+}
+
 // {{{ constants
 /**
  * Reserved key used to store the schema record
@@ -136,20 +145,6 @@ class DBA_Table extends PEAR
      */
     var $_tableName;
 
-    /**
-     * Table of functions recognized in select/join parsing
-     * @var    array
-     * @access private
-     */
-    var $_functions;
-
-    /**
-     * Table of operators recognized in select/join parsing
-     * @var    array
-     * @access private
-     */
-    var $_operators;
-
     // }}}
 
     // {{{ DBA_Table($driver = 'file')
@@ -165,14 +160,6 @@ class DBA_Table extends PEAR
         // initialize the internal dba object
         $this->_dba =& DBA::create($driver);
         $this->_driver = $driver;
-
-        // store symbols this way to take advantage of PHP's hash table
-        // implementation of associative arrays
-/*
-        $this->_functions = array_flip(get_class_methods('DBA_Functions'));
-        $this->_operators = array_flip(array('=','<','>','!','(',')','&','|',
-                                             '*','/','+','-','%',','));
-*/
     }
     // }}}
 
@@ -1022,40 +1009,33 @@ class DBA_Table extends PEAR
     // {{{ function _parsePHPQuery($rawQuery)
     function _parsePHPQuery($rawQuery)
     {
-		global $_dba_functions, $_dba_operators;
+        global $_dba_functions, $_dba_operators;
 
-		if (!isset($_dba_functions)) {
-			$_dba_functions = array_flip(get_class_methods('DBA_Functions'));
-		}
-		if (!isset($_dba_operators)) {
-			$_dba_operators = array_flip(array('=','<','>','!','(',')','&','|',
-                                             '*','/','+','-','%',','));
-		}
-		if (!function_exists(_cookIdentToken)) {
+        if (!function_exists(_cookIdentToken)) {
 
-		// {{{ function _cookIdentToken($token)
-		function _cookIdentToken($token)
-		{
-			global $_dba_functions;
+        // {{{ function _cookIdentToken($token)
+        function _cookIdentToken($token)
+        {
+            global $_dba_functions;
 
-			// quoted string
-			if ($token{0} == "'" || $token{0} == '"') {
-				$cookedToken .= $token;
-			} elseif ($token == 'null' || $token == 'and' || $token == 'or' ||
-					  $token == 'false' || $token == 'true' ||
-					  function_exists($token)) {
-				$cookedToken .= $token;
-			} elseif (isset($_dba_functions[$token])) {
-				$cookedToken .= 'DBA_Function::'.$token;
-			} elseif (!is_numeric($token)) {
-				$cookedToken .= '$row[\''.$token.'\']';
-			} else {
-				$cookedToken .= $token;
-			}
-			return $cookedToken;
-		}
-		// }}}
-		}
+            // quoted string
+            if ($token{0} == "'" || $token{0} == '"') {
+                $cookedToken .= $token;
+            } elseif ($token == 'null' || $token == 'and' || $token == 'or' ||
+                      $token == 'false' || $token == 'true' ||
+                      function_exists($token)) {
+                $cookedToken .= $token;
+            } elseif (isset($_dba_functions[$token])) {
+                $cookedToken .= 'DBA_Function::'.$token;
+            } elseif (!is_numeric($token)) {
+                $cookedToken .= '$row[\''.$token.'\']';
+            } else {
+                $cookedToken .= $token;
+            }
+            return $cookedToken;
+        }
+        // }}}
+        }
 
         $inQuote = false;
         $PHPQuery = '';
@@ -1082,10 +1062,10 @@ class DBA_Table extends PEAR
                 } else {
                     $PHPQuery .= $c;
                 }
-			} elseif ($c == "\t" || $c == "\n" || $c == "\r") {
-				if ($inQuote) {
-					$token .= $c;
-				}
+            } elseif ($c == "\t" || $c == "\n" || $c == "\r") {
+                if ($inQuote) {
+                    $token .= $c;
+                }
             } else {
                 $token .= $c;
             }
