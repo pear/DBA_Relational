@@ -156,35 +156,36 @@ function formatTextTable($rows, $fields = null, $style = 'oracle')
  * This function uses custom CSS classes to define the table style.
  * A recommended CSS is as follows:
  *
- *  // general table style
- *  .dbaTable {
- *    border: 1;
- *    cellspacing: 0;
- *    cellpadding: 4;
- *    bordercolordark: white;
- *    bordercolorlight: black;
- *  }
- *  // field style
- *  .dbaTableField {
- *    font-weight: bold;
- *    text-align: center;
- *    color: black;
- *    background-color: #CCCCFF;
- *  }
- *  // row style
- *  .dbaTableRow0 {
- *    font-weight: normal;
- *    text-align: left;
- *    color: black;
- *    background-color: #F4F4F4;
- *  }
- *  // alternate row style
- *  .dbaTableRow1 {
- *    font-weight: normal;
- *    text-align: left;
- *    color: black;
- *    background-color: #CCCCCC;
- *  }
+ * .dbatable {
+ *   border: solid;
+ *   border-color: gray;
+ *   border-collapse: collapse;
+ * }
+ * .dbatablefield {
+ *   font-weight: bold;
+ *   text-align: center;
+ *   color: black;
+ *   background-color: #CCCCFF;
+ *   border: solid;
+ *   border-color: gray;
+ *   border-width: thin;
+ * }
+ * .dbatablerow0 {
+ *   font-weight: normal;
+ *   color: black;
+ *   background-color: #FFFFFF;
+ *   border: solid;
+ *   border-color: gray;
+ *   border-width: thin;
+ * }
+ * .dbatablerow1 {
+ *   font-weight: normal;
+ *   color: black;
+ *   background-color: #F4F4F4;
+ *   border: solid;
+ *   border-color: gray;
+ *   border-width: thin;
+ * }
  *
  * @param   array $rows
  * @param   array $fields list of fields to display
@@ -197,28 +198,29 @@ function formatHtmlTable($rows, $fields = null)
         if (is_null($fields)) {
             $fields = array_keys(current($rows));
         }
-        $buffer = '<table class="dbaTable">';
+        $buffer = "<table class=\"dbatable\">\n";
 
         // print fields
-        $buffer .= '<tr>';
+        $buffer .= "  <tr>\n";
         foreach ($fields as $field) {
-            $buffer .= '<td class="dbaTableField">'.$field."</td>";
+            $buffer .= "    <th class=\"dbatablefield\">&nbsp;&nbsp;"
+                       ."$field&nbsp;&nbsp;</th>\n";
         }
-        $buffer .= '</tr>';
+        $buffer .= "  </tr>\n";
 
         // print rows
         $rowStyle = 0;
         foreach ($rows as $row) {
-            $buffer .= '<tr>';
+            $buffer .= "  <tr>\n";
             foreach ($fields as $field) {
-                $buffer .= '<td class="dbaTableRow'.$rowStyle.'">'
-                           .$row[$field].'</td>';
+                $buffer .= "    <td class=\"dbatablerow$rowStyle\">&nbsp;&nbsp;"
+                           .$row[$field]."&nbsp;&nbsp;</td>\n";
             }
             $rowStyle = 1 - $rowStyle;
-            $buffer .= '</tr>';
+            $buffer .= "  </tr>\n";
         }
 
-        $buffer .= '</table>';
+        $buffer .= "</table>\n";
     }
     return $buffer;
 }
