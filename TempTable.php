@@ -42,7 +42,7 @@ class DBA_TempTable
 	function isTempTable($tTable)
 	{
 		return (is_object($tTable) &&
-            (get_class($tTable) == 'dba_temptable' ||
+            (strtolower(get_class($tTable)) == 'dba_temptable' ||
 			is_subclass_of($tTable, 'dba_temptable')));
 	}
 	// }}}
