@@ -1283,57 +1283,56 @@ class DBA_Table extends PEAR
     }
     // }}}
 
-    function _getColumn($rows, $fieldName)
+    // {{{ _getColumn($field, $rows)
+    function _getColumn($field, $rows)
     {
         $tmp = array();
         foreach ($rows as $row) {
-            if (!is_null($row[$fieldName])) {
-                $tmp[] = $row[$fieldName];
+            if (!is_null($row[$field])) {
+                $tmp[] = $row[$field];
             }
         }
         return $tmp;
     }
+    // }}}
 
-    // {{{ func_max($fieldName, $rows)
-    function func_max($fieldName, $rows)
+    // {{{ func_max($field, $rows)
+    function func_max($field, $rows)
     {
         if (is_null($rows) || !sizeof($rows)) return null;
-        return max(_getColumn($rows, $fieldName));
+        return max(DBA_Table::_getColumn($field, $rows));
     }
     // }}}
 
-    // {{{ func_min($fieldName, $rows)
-    function func_min($fieldName, $rows)
+    // {{{ func_min($field, $rows)
+    function func_min($field, $rows)
     {
         if (is_null($rows) || !sizeof($rows)) return null;
-        return min(_getColumn($rows, $fieldName));
+        return min(DBA_Table::_getColumn($field, $rows));
     }
     // }}}
 
-    // {{{ func_sum($fieldName, $rows)
-    function func_sum($fieldName, $rows)
+    // {{{ func_sum($field, $rows)
+    function func_sum($field, $rows)
     {
         if (is_null($rows) || !sizeof($rows)) return null;
-        return array_sum(_getColumn($rows, $fieldName));
+        return array_sum(DBA_Table::_getColumn($field, $rows));
     }
     // }}}
 
-    // {{{ func_avg($fieldName, $rows)
-    function func_avg($fieldName, $rows)
+    // {{{ func_avg($field, $rows)
+    function func_avg($field, $rows)
     {
         if (is_null($rows) || !sizeof($rows)) return null;
-        return array_sum(DBA_Table::_getColumn($rows, $fieldName)) / sizeof($rows);
+        return array_sum(DBA_Table::_getColumn($field, $rows)) / sizeof($rows);
     }
     // }}}
 
-    // {{{ func_count($fieldName, $rows)
-    function func_count($fieldName, $rows)
+    // {{{ func_count($field, $rows)
+    function func_count($rows)
     {
         if (is_null($rows) || !sizeof($rows)) return null;
-        if ($fieldName == '*') {
-            return count($rows);
-        }
-        return count(DBA_Table::_getColumn($rows, $fieldName));
+        return count($rows);
     }
     // }}}
 
