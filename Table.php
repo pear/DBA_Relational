@@ -1034,6 +1034,7 @@ class DBA_Table extends PEAR
                     $inQuote = !$inQuote;
                     $quote = '';
                 }
+                $token .= $c;
             } elseif (isset($this->_operators[$c]) || $c == ' ') {
                 if (!$inQuote && strlen($token)) {
                     $PHPQuery .= $this->_cookIdentToken($token);
@@ -1060,7 +1061,7 @@ class DBA_Table extends PEAR
     function _cookIdentToken($token)
     {
         // quoted string
-        if ($token{0} == "'" && $token{0} == '"') {
+        if ($token{0} == "'" || $token{0} == '"') {
             $cookedToken .= $token;
         } elseif ($token == 'null' || $token == 'and' || $token == 'or' ||
                   $token == 'false' || $token == 'true' ||
