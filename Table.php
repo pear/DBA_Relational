@@ -683,7 +683,7 @@ class DBA_Table extends PEAR
                     // use the default value
                     if ($fieldMeta['default_type'] == 'function') {
                         $c_value = $this->_packField($fieldName,
-                           eval('return $this->dba_'.
+                           eval('return $this->func_'.
                                   $this->_schema[$fieldName]['default'].';'));
                     } else {
                         $c_value = $this->_packField($fieldName,
@@ -1283,17 +1283,69 @@ class DBA_Table extends PEAR
     }
     // }}}
 
-    // {{{ dba_time()
+    function _getColumn($rows, $fieldName)
+    {
+        $tmp = array();
+        foreach ($rows as $row) {
+            if (!is_null($row[$fieldName])) {
+                $tmp[] = $row[$fieldName];
+            }
+        }
+        return $tmp;
+    }
+
+    // {{{ func_max($fieldName, $rows)
+    function func_max($fieldName, $rows)
+    {
+        if (is_null($rows) || !sizeof($rows)) return null;
+        return max(_getColumn($rows, $fieldName));
+    }
+    // }}}
+
+    // {{{ func_min($fieldName, $rows)
+    function func_min($fieldName, $rows)
+    {
+        if (is_null($rows) || !sizeof($rows)) return null;
+        return min(_getColumn($rows, $fieldName));
+    }
+    // }}}
+
+    // {{{ func_sum($fieldName, $rows)
+    function func_sum($fieldName, $rows)
+    {
+        if (is_null($rows) || !sizeof($rows)) return null;
+        return array_sum(_getColumn($rows, $fieldName));
+    }
+    // }}}
+
+    // {{{ func_avg($fieldName, $rows)
+    function func_avg($fieldName, $rows)
+    {
+        if (is_null($rows) || !sizeof($rows)) return null;
+        return array_sum(DBA_Table::_getColumn($rows, $fieldName)) / sizeof($rows);
+    }
+    // }}}
+
+    // {{{ func_count($fieldName, $rows)
+    function func_count($fieldName, $rows)
+    {
+        if (is_null($rows) || !sizeof($rows)) return null;
+        if ($fieldName == '*') {
+            return count($rows);
+        }
+        return count(DBA_Table::_getColumn($rows, $fieldName));
+    }
+    // }}}
+
+    // {{{ func_time()
     /**
-     * Internal function used for query processing
+     * Internal function for returning the current time
      *
      * @access private
      */
-    function dba_time() {
+    function func_time() {
         return time();
     }
     // }}}
 
-
-    
 }
