@@ -79,7 +79,7 @@ define('DBA_KEY_SEPARATOR', '.');
  * @author  Brent Cook <busterb@mail.utexas.edu>
  * @package DBA
  * @access  public
- * @version 0.19
+ * @version 0.20
  */
 class DBA_Table extends PEAR
 {
@@ -125,6 +125,11 @@ class DBA_Table extends PEAR
      * Name of the DBA driver to use
      */
     var $_driver;
+
+    /**
+     * Name of the Table
+     */
+    var $_tableName;
 
     // }}}
 
@@ -197,6 +202,7 @@ class DBA_Table extends PEAR
             return $this->raiseError('Table is missing field descriptor.'.
                                      'at key, '. DBA_SCHEMA_KEY);
         }
+        $this->_tableName = $tableName;
         return $this->_schema;
     }
     // }}}
@@ -223,6 +229,7 @@ class DBA_Table extends PEAR
             }
         }
         $this->_maxKey = null;
+        $this->_tableName = null;
         return $this->_dba->close();
     }
     // }}}
@@ -1286,4 +1293,7 @@ class DBA_Table extends PEAR
         return time();
     }
     // }}}
+
+
+    
 }
