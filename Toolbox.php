@@ -27,7 +27,7 @@ require_once 'PEAR.php';
  * table.
  *
  * @author  Brent Cook <busterb@mail.utexas.edu>
- * @version 0.18
+ * @version 0.19
  * @access  public
  * @package DBA
  */

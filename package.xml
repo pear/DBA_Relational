@@ -21,10 +21,13 @@ Table management extension to DBA
     <release>
         <license>LGPL</license>
         <version>0.19</version>
-        <date>2002-09-24</date>
+        <date>2002-09-29</date>
         <state>devel</state>
         <notes>
-No notes is good notes.
+This is the first release as a separate package from DBA. A notable change is that the format of the schema as stored on disk has changed. Now, we either use php's serialize() or wddx_serialize_value(), rather than a custom algorithm. These should be better for supporting DBA_Relational across programming languages, be faster and remove complexity. However, this is not compatible with old databases, so be sure to dump your old data before upgrading beyond DBA 0.18! Comments on this change are very welcome.
+
+In the works are many improvements to the query algorithms and the long-awaited
+sequence support.
         </notes>
         <filelist>
             <dir name="/" baseinstalldir="/DBA">

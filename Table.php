@@ -79,7 +79,7 @@ define('DBA_KEY_SEPARATOR', '.');
  * @author  Brent Cook <busterb@mail.utexas.edu>
  * @package DBA
  * @access  public
- * @version 0.18
+ * @version 0.19
  */
 class DBA_Table extends PEAR
 {
