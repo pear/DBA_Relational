@@ -34,7 +34,7 @@ class DBA_TempTable
 	function DBA_TempTable($rows=null, $alias=null)
 	{
 		if (!is_null($rows) && is_array($rows))
-			$this->setRows(&$rows, $alias);
+			$this->setRows($rows, $alias);
 	}
 	// }}}
 
@@ -48,7 +48,7 @@ class DBA_TempTable
 	// }}}
 
 	// {{{ function setRows($rows, $alias=null)
-	function setRows($rows, $alias=null)
+	function setRows(&$rows, $alias=null)
 	{
 		if (is_array($rows)) {
 			$v_rows = array();

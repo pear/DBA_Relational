@@ -105,6 +105,8 @@ function formatTextTable($rows, $fields = null, $style = 'oracle')
 {
     $corner = ($style == 'oracle') ? ' ' : '+';
     $wall = ($style == 'oracle') ? ' ' : '|';
+    $separator = '';
+    $buffer = '';
 
     if (is_array($rows) && sizeof($rows)) {
 

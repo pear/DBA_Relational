@@ -524,6 +524,122 @@ class DBA_Relational extends PEAR
     }
     // }}}
 
+	//{{{ &join($tableA,$tableB,$option=array())
+	/**
+	 * Makes a new table joining 2 existing tables
+	 *
+     * @access  public
+     * @param   $tableA mixed table name or object to join
+     * @param   $tableB mixed table name or object to join
+     * @param   string $query query expression for performing the select
+     * @param   $type   string 'inner','outer','right','left'
+     * @param   array                  $option join options
+     * @return  object PEAR_Error on failure, DBA_TempTable on success
+     */
+	function &joinTables($tableA, $tableB, $clause=true, $type='inner')
+	{
+		if (!DBA_TempTable::isTempTable($tableA)) {
+			// Open table
+			$result = $this->_openTable($tableA, 'r');
+			if (PEAR::isError($result))
+				return $result;
+
+			// Makes a DBA_TempTable object
+			$objectA = new DBA_TempTable($this->_tables[$tableA], $option['alias'][0]);
+		} else {
+            $objectA = &$tableA;
+        }
+		
+		if (!DBA_TempTable::isTempTable($tableB)) {
+			// Open table
+			$result = $this->_openTable($tableB, 'r');
+			if (PEAR::isError($result))
+				return $result;
+
+			// Makes a DBA_TempTable object
+			$objectB = new DBA_TempTable($this->_tables[$tableB], $option['alias'][1]);
+		} else {
+            $objectB = &$tableB;
+        }
+
+		if (isset($option['on'])) {
+			$onJoin = $this->_parsePHPQuery($option['on']);
+			if (PEAR::isError($onJoin))
+				return $onJoin;
+		} else {
+			$onJoin = 1;
+		}
+		if (isset($option['using'])) {
+
+			//not supported yet...
+		}
+
+		$PHPeval = '
+		// get each row from each table object and make a new row
+		$keyA = $objectA->firstRow();
+		while($keyA !== false) {
+			$rowA = $objectA->getRow($keyA);
+			$keyB = $objectB->firstRow();
+			while($keyB !== false) {
+				$rowB = $objectB->getRow($keyB);
+
+				//make a new row
+				$row = $rowA+$rowB;
+
+				if ('.$onJoin.') {
+					$rows[] = $row;
+				}
+				$keyB = $objectB->nextRow();
+			}
+			$keyA = $objectA->nextRow();
+		}
+
+		// If join type is outer
+		if ($type != "inner") {
+			// Makes blank rows;
+			$blankA = $objectA->blankRow();
+			$blankB = $objectB->blankRow();
+
+			if ($type != "right") {
+				$keyA = $objectA->firstRow();
+				while ($keyA !== false) {
+					$rowA = $objectA->getRow($keyA);
+					
+					$row = $rowA + $blankB;
+
+					if ('.$onJoin.') {
+						$rows[] = $row;
+					}
+					$keyA = $objectA->nextRow();
+				}
+			}
+
+			if ($type != "left") {
+				$keyB = $objectB->firstRow();
+				while ($keyB !== false) {
+					$rowB = $objectB->getRow($keyB);
+					
+					$row = $blankA + $rowB;
+
+					if ('.$onJoin.') {
+						$rows[] = $row;
+					}
+					$keyB = $objectB->nextRow();
+				}
+			}
+		}
+		';
+		eval($PHPeval);
+
+		// set rows to newly created object
+		$tblObject = new DBA_TempTable();
+		$tblObject->set($rows);
+
+		// return table object
+		return $tblObject;
+	}
+	// }}}
+
     // {{{ join($tableA, $tableB, $rawQuery)
     /**
      * Joins rows between two tables based on a query.

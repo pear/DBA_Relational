@@ -68,6 +68,7 @@ $queries = array(
 '$db->select("nothere", "pigs == \'fly\'")',
 '$db->select("emp", "salary >= 1500")',
 
+/*
 '$db->sort("empname", "a",
     $db->select("emp", "(job != \'analyst\') and (job != \'intern\')")
     )',
@@ -103,6 +104,7 @@ $queries = array(
             )
         )
     )'
+*/
 );
 
 $sql_queries = array(

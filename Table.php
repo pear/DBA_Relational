@@ -40,6 +40,10 @@ if (!isset($_dba_operators)) {
                                         '*','/','+','-','%',','));
 }
 
+if (!isset($_dba_keywords)) {
+    $_dba_keywords = array_flip(array('and','or','null','false','true'));
+}
+
 // {{{ constants
 /**
  * Reserved key used to store the schema record
@@ -305,7 +309,7 @@ class DBA_Table extends PEAR
      * Validates a DBA schema
      *
      * @access private
-     * @returns the validated schema, PEARError
+     * @returns the validated schema, PEAR_Error
      */
     function _validateSchema($schema) {
         foreach ($schema as $field=>$meta) {
@@ -329,6 +333,11 @@ class DBA_Table extends PEAR
                 ($meta['default'] != 'time()')) {
                     return $this->raiseError($meta['default'].' is not a valid function');
             }
+            if (!isset($meta['default_type'])) {
+                $meta['default_type'] = $meta['type'];
+                $meta['default'] = "\x00";
+            }
+
             $schema[$field] = $meta;
         }
         return $schema;
@@ -709,7 +718,7 @@ class DBA_Table extends PEAR
             } elseif (isset($fieldMeta['not_null'])) {
 
                 return $this->raiseError("$fieldName cannot be null");
-            } elseif (is_null($data[$fieldName])) {
+            } elseif (!isset($data[$fieldName]) || is_null($data[$fieldName])) {
 
                 $c_value = "\x00"; // \x00 is the null value placeholder
             } else {
@@ -724,7 +733,11 @@ class DBA_Table extends PEAR
             $buffer[] = $c_value;
             ++$i;
         }
-        $key = implode(DBA_KEY_SEPARATOR, $key);
+	if (sizeof($key) > 1) {
+            $key = implode(DBA_KEY_SEPARATOR, $key);
+	} else {
+            $key = $key[0];
+        }
         return implode(DBA_FIELD_SEPARATOR, $buffer);
     }
     // }}}
@@ -785,7 +798,7 @@ class DBA_Table extends PEAR
 
     // {{{ replace($rawQuery, $data, $rows=null)
     /**
-     * Replaces rows that match $rawQuery with $
+     * Replaces rows that match $rawQuery with $data
      *
      * @access  public
      * @param   string $rawQuery query expression for performing the replace
@@ -850,11 +863,11 @@ class DBA_Table extends PEAR
      */
     function remove($rawQuery, $rows=null)
     {
-        $rows =& $this->select($rawQuery, $rows);
+        $removableRows =& $this->select($rawQuery, $rows);
         if (PEAR::isError($rows)) {
             return $rows;
         }
-        foreach (array_keys($rows) as $rowKey) {
+        foreach (array_keys($removableRows) as $rowKey) {
             $result = $this->_dba->remove($rowKey);
             if (PEAR::isError($result)) {
                 return $result;
@@ -1006,40 +1019,42 @@ class DBA_Table extends PEAR
     }
     // }}}
 
+    // {{{ function _cookToken($token, &$isField)
+    function _cookToken($token, &$isField)
+    {
+        global $_dba_functions, $_dba_keywords;
+        $isField = false;
+
+        // a quoted string
+        if ($token{0} == '"' || $token{0} == "'"
+            || isset($_dba_keywords[$token])) {
+            return $token;
+	
+	// a function
+	} elseif (isset($_dba_functions[$token])) {
+            return 'DBA_Function::'.$token;
+
+	// table field
+        } elseif (!is_numeric($token)) {
+            $isField = true;
+            return '$row[\''.$token.'\']';
+
+	// something else
+        } else {
+            return $token;
+        }
+    }
+    // }}}
+
     // {{{ function _parsePHPQuery($rawQuery)
-    function _parsePHPQuery($rawQuery)
+    function _parsePHPQuery($rawQuery, &$fields)
     {
         global $_dba_functions, $_dba_operators;
-
-        if (!function_exists(_cookIdentToken)) {
-
-        // {{{ function _cookIdentToken($token)
-        function _cookIdentToken($token)
-        {
-            global $_dba_functions;
-
-            // quoted string
-            if ($token{0} == "'" || $token{0} == '"') {
-                $cookedToken .= $token;
-            } elseif ($token == 'null' || $token == 'and' || $token == 'or' ||
-                      $token == 'false' || $token == 'true' ||
-                      function_exists($token)) {
-                $cookedToken .= $token;
-            } elseif (isset($_dba_functions[$token])) {
-                $cookedToken .= 'DBA_Function::'.$token;
-            } elseif (!is_numeric($token)) {
-                $cookedToken .= '$row[\''.$token.'\']';
-            } else {
-                $cookedToken .= $token;
-            }
-            return $cookedToken;
-        }
-        // }}}
-        }
 
         $inQuote = false;
         $PHPQuery = '';
         $token = '';
+        $fields = array();
 
         for($i=0; $i < strlen($rawQuery); $i++) {
             $c = $rawQuery{$i};
@@ -1054,7 +1069,10 @@ class DBA_Table extends PEAR
                 $token .= $c;
             } elseif (isset($_dba_operators[$c]) || $c == ' ') {
                 if (!$inQuote && strlen($token)) {
-                    $PHPQuery .= _cookIdentToken($token);
+                    $PHPQuery .= DBA_Table::_cookToken($token, $isField);
+                    if ($isField) {
+                        $fields[] = $token;
+                    }
                     $PHPQuery .= $c;
                     $token = '';
                 } elseif ($inQuote) {
@@ -1064,7 +1082,10 @@ class DBA_Table extends PEAR
                 }
             } elseif ($c == "\t" || $c == "\n" || $c == "\r") {
                 if (!$inQuote && strlen($token)) {
-                    $PHPQuery .= _cookToken($token);
+                    $PHPQuery .= DBA_Table::_cookToken($token, $isField);
+                    if ($isField) {
+                        $fields.push($token);
+                    }
                     $PHPQuery .= $c;
                     $token = '';
                 } elseif ($inQuote) {
@@ -1078,7 +1099,7 @@ class DBA_Table extends PEAR
         }
 
         if (strlen($token)) {
-            $PHPQuery .= _cookIdentToken($token);
+            $PHPQuery .= DBA_Table::_cookToken($token, $isField);
         }
         return $PHPQuery;
     }
@@ -1113,12 +1134,21 @@ class DBA_Table extends PEAR
             }
 
             // convert the query into a php statement
-            $PHPQuery = $this->_parsePHPQuery($rawQuery);
+            $PHPQuery = $this->_parsePHPQuery($rawQuery, $fields);
+
+            // validate field names
+            foreach ($fields as $field) {
+                if (!$this->fieldExists($field)) {
+                    return $this->raiseError($field . ' is not a field name');
+                }
+            }
+
             $PHPSelect = 'foreach ($rows as $key=>$row) if ('.
                         $PHPQuery.') $results[$key] = $row;';
 
             // perform the select
-            $results = null;
+            $results = array();
+            echo $PHPSelect;
             eval ($PHPSelect);
             return $results;
 
@@ -1246,9 +1276,11 @@ class DBA_Table extends PEAR
     {
         if (is_array($rows)) {
             $projectFields = array();
-            if (is_string($fields)) {
+            $projectRows = array();
+
+	    if (is_string($fields)) {
                 $projectFields = DBA_Table::_parseFieldString($fields,
-                                       reset($rows));
+                                             reset($rows));
             } else {
                 if (is_array($fields)) {
                     // we already have an array of fields
