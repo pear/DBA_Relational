@@ -62,20 +62,6 @@ class DBA_Relational extends PEAR
      */
     var $_driver;
 
-    /**
-     * Table of functions recognized in select/join parsing
-     * @access private
-     * @var array
-     */
-    var $_functions;
-
-    /**
-     * Table of operators recognized in select/join parsing
-     * @access private
-     * @var array
-     */
-    var $_operators;
-
     // }}}
 
     // {{{ DBA_Relational($home = '', $driver = 'file')
@@ -97,12 +83,6 @@ class DBA_Relational extends PEAR
         $this->_home = $home;
 
         $this->_driver = $driver;
-
-        // we store symbols this way to take advantage of PHP's hash table
-        // implementation of associative arrays
-        $this->_functions = array_flip(get_class_methods('DBA_Functions'));
-        $this->_operators = array_flip(array('=','<','>','!','(',')','&','|',
-                                             '*','/','+','-','%',','));
 
         // create the _tables table. this keeps track of the tables to be used
         // in DBA_Relational as well as which driver to use for each.
@@ -519,65 +499,6 @@ class DBA_Relational extends PEAR
     }
     // }}}
 
-    // {{{ function _parsePHPQuery($rawQuery)
-    function _parsePHPQuery($rawQuery)
-    {
-        $inQuote = false;
-        $PHPQuery = '';
-        $token = '';
-
-        for($i=0; $i < strlen($rawQuery); $i++) {
-            $c = $rawQuery{$i};
-            if ($c == "'" || $c == "\"") {
-                if (!$inQuote) {
-                    $inQuote = !$inQuote;
-                    $quote = $c;
-                } elseif ($c == $quote) {
-                    $inQuote = !$inQuote;
-                    $quote = '';
-                }
-            } elseif (isset($this->_operators[$c]) || $c == ' ') {
-                if (!$inQuote && strlen($token)) {
-                    $PHPQuery .= $this->_cookIdentToken($token);
-                    $PHPQuery .= $c;
-                    $token = '';
-                } elseif ($inQuote) {
-                    $token .= $c;
-                } else {
-                    $PHPQuery .= $c;
-                }
-            } else {
-                $token .= $c;
-            }
-        }
-
-        if (strlen($token)) {
-            $PHPQuery .= $this->_cookIdentToken($token);
-        }
-        return $PHPQuery;
-    }
-    // }}}
-
-    // {{{ function _cookIdentToken($token)
-    function _cookIdentToken($token)
-    {
-        // quoted string
-        if ($token{0} == "'" && $token{0} == "\"") {
-            $cookedToken .= $token;
-        } elseif ($token == 'null' || $token == 'and' || $token == 'or' ||
-                  $token == 'false' || $token == 'true' || function_exists($token)) {
-            $cookedToken .= $token;
-        } elseif (isset($this->_functions[$token])) {
-            $cookedToken .= 'DBA_Function::'.$token;
-        } elseif (!is_numeric($token)) {
-            $cookedToken .= '$row[\''.$token.'\']';
-        } else {
-            $cookedToken .= $token;
-        }
-        return $cookedToken;
-    }
-    // }}}
-    
     // {{{ select($tableName, $query, $rows=null)
     /**
      * Performs a select on a table. This means that a subset of rows in a
@@ -591,28 +512,15 @@ class DBA_Relational extends PEAR
      * @param   string $query query expression for performing the select
      * @return  mixed  PEAR_Error on failure, the row array on success
      */
-    function select($table, $query='*', $rows=null)
+    function select($tableName, $query='*', $rows=null)
     {
-        $result = $this->_openTable($table,'r');
+        $result = $this->_openTable($tableName,'r');
         if (PEAR::isError($result)) {
             return $result;
         }
 
-        $rows = $this->_tables[$table]->getRows();
-
-        if ($query == '*') {
-            return $rows;
-        }
-
-        $PHPQuery = $this->_parsePHPQuery($query);
-
-        $PHPSelect = 'foreach ($rows as $key=>$row) if ('.
-                      $PHPQuery.') $results[$key] = $row;';
-        echo("$PHPSelect\n");
-
-        $results = null;
-        eval ($PHPSelect);
-        return $results;
+        // use the table's select query parser
+        return $this->_tables[$tableName]->select($query, $rows);
     }
     // }}}
 
@@ -628,6 +536,8 @@ class DBA_Relational extends PEAR
      */
     function join($tableA, $tableB, $rawQuery)
     {
+        return $this->raiseError('TODO: merge new join()');
+/*
         // validate tables
         if (!$this->_validateTable($tableA, $rowsA, $fieldsA, 'A')) {
             return $this->raiseError("$tableA not in query");
@@ -659,6 +569,7 @@ class DBA_Relational extends PEAR
         eval ($PHPJoin);
 
         return $results;
+*/
     }
     // }}}
 }

@@ -124,13 +124,31 @@ class DBA_Table extends PEAR
 
     /**
      * Name of the DBA driver to use
+     * @var    string
+     * @access private
      */
     var $_driver;
 
     /**
      * Name of the Table
+     * @var    string
+     * @access private
      */
     var $_tableName;
+
+    /**
+     * Table of functions recognized in select/join parsing
+     * @var    array
+     * @access private
+     */
+    var $_functions;
+
+    /**
+     * Table of operators recognized in select/join parsing
+     * @var    array
+     * @access private
+     */
+    var $_operators;
 
     // }}}
 
@@ -147,6 +165,12 @@ class DBA_Table extends PEAR
         // initialize the internal dba object
         $this->_dba =& DBA::create($driver);
         $this->_driver = $driver;
+
+        // store symbols this way to take advantage of PHP's hash table
+        // implementation of associative arrays
+        $this->_functions = array_flip(get_class_methods('DBA_Functions'));
+        $this->_operators = array_flip(array('=','<','>','!','(',')','&','|',
+                                             '*','/','+','-','%',','));
     }
     // }}}
 
@@ -993,72 +1017,63 @@ class DBA_Table extends PEAR
     }
     // }}}
 
-    // {{{ _cookQuery($query)
-    /**
-     * Adds spaces around special symbols so that explode will separate them
-     * properly from other tokens. Replace spaces within strings with pipe
-     * characters so that explode will not separate string tokens.
-     *
-     * @access  private
-     * @param   string  $string
-     * @return  string  the cooked query
-     */
-    function _cookQuery($query)
+    // {{{ function _parsePHPQuery($rawQuery)
+    function _parsePHPQuery($rawQuery)
     {
-        foreach (array(',','(',')','==','!=','>','<','<=','>=') as $symbol) {
-            $query = str_replace($symbol, " $symbol ", $query);
-        }
+        $inQuote = false;
+        $PHPQuery = '';
+        $token = '';
 
-        $inString = false;
-        $cookedQuery = '';
-        for ($i=0; $i < strlen($query); ++$i) {
-            $chr = $query{$i};
-            if ($chr =='\'') {
-                $inString = !$inString;
-                $cookedQuery .= $chr;
-            } elseif ($inString && ($chr == ' ')) {
-                $cookedQuery .= DBA_FIELD_SEPARATOR;
+        for($i=0; $i < strlen($rawQuery); $i++) {
+            $c = $rawQuery{$i};
+            if ($c == "'" || $c == '"') {
+                if (!$inQuote) {
+                    $inQuote = !$inQuote;
+                    $quote = $c;
+                } elseif ($c == $quote) {
+                    $inQuote = !$inQuote;
+                    $quote = '';
+                }
+            } elseif (isset($this->_operators[$c]) || $c == ' ') {
+                if (!$inQuote && strlen($token)) {
+                    $PHPQuery .= $this->_cookIdentToken($token);
+                    $PHPQuery .= $c;
+                    $token = '';
+                } elseif ($inQuote) {
+                    $token .= $c;
+                } else {
+                    $PHPQuery .= $c;
+                }
             } else {
-                $cookedQuery .= $chr;
+                $token .= $c;
             }
         }
-        return $cookedQuery;
+
+        if (strlen($token)) {
+            $PHPQuery .= $this->_cookIdentToken($token);
+        }
+        return $PHPQuery;
     }
     // }}}
 
-    // {{{ _parsePHPQuery($rawQuery, $fieldTokens)
-    /**
-     * Converts a query expression into PHP code for executing a select.
-     *
-     * @access  private
-     * @param   string  $rawQuery the incoming query
-     * @param   array   $fieldTokens list of tokens that should be treated as
-     *                               field names
-     * @return  string  PHP code for performing a select
-     */
-    function _parsePHPQuery($rawQuery, $fieldTokens)
+    // {{{ function _cookIdentToken($token)
+    function _cookIdentToken($token)
     {
-        // add spaces around symbols for explode to work properly
-        $cookedQuery = $this->_cookQuery($rawQuery);
-
-        // begin building the php query for a row
-        $phpQuery = '';
-
-        // scan the tokens in the raw query to build a new query
-        // if the token is a field name, use it as a key in $row[]
-        $tokens = explode(' ', $cookedQuery);
-        foreach ($tokens as $token) {
-            // is this token a field name?
-            if (in_array($token, $fieldTokens)) {
-                $phpQuery .= "\$row['$token']";
-            } elseif ($token != '||') {
-                // restore spaces in a string token
-                $phpQuery .= str_replace(DBA_FIELD_SEPARATOR, ' ', $token);
-            } else {
-                $phpQuery .= $token;
-            }
+        // quoted string
+        if ($token{0} == "'" && $token{0} == '"') {
+            $cookedToken .= $token;
+        } elseif ($token == 'null' || $token == 'and' || $token == 'or' ||
+                  $token == 'false' || $token == 'true' ||
+                  function_exists($token)) {
+            $cookedToken .= $token;
+        } elseif (isset($this->_functions[$token])) {
+            $cookedToken .= 'DBA_Function::'.$token;
+        } elseif (!is_numeric($token)) {
+            $cookedToken .= '$row[\''.$token.'\']';
+        } else {
+            $cookedToken .= $token;
         }
-        return $phpQuery;
+        return $cookedToken;
     }
     // }}}
 
@@ -1079,27 +1094,27 @@ class DBA_Table extends PEAR
     {
         if ($this->_dba->isOpen()) {
 
-            // get a list of valid field names
-            $fieldTokens = array_keys($this->_schema);
-
             // if we haven't passed any rows to select from, use the whole table
             if ($rows==null)
                 $rows = $this->getRows();
 
+            $rows = $this->getRows();
+
             // handle the special case of requesting all rows
-            if ($rawQuery == '*')
+            if ($rawQuery == '*') {
                 return $rows;
+            }
 
             // convert the query into a php statement
+            $PHPQuery = $this->_parsePHPQuery($rawQuery);
             $PHPSelect = 'foreach ($rows as $key=>$row) if ('.
-                         $this->_parsePHPQuery($rawQuery, $fieldTokens).
-                        ') $results[$key] = $row;';
+                        $PHPQuery.') $results[$key] = $row;';
 
             // perform the select
             $results = null;
             eval ($PHPSelect);
-
             return $results;
+
         } else {
             return $this->raiseError('table not open');
         }
