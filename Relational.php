@@ -17,12 +17,16 @@
 // | License along with this library; if not, write to the Free Software  |
 // | Foundation, Inc., 59 Temple Place, Suite 330,Boston,MA 02111-1307 USA|
 // +----------------------------------------------------------------------+
+// | Authors: Brent Cook <busterb@mail.utexas.edu>                        |
+// |          Jacob Lee <jacobswell4u@yahoo.com>                          |
+// +----------------------------------------------------------------------+
 //
 // $Id$
 
 require_once 'PEAR.php';
 require_once 'DBA/Table.php';
 require_once 'DBA/TempTable.php';
+require_once 'SQL/Lexer.php';
 
 /**
  * A relational database manager using DBA_Table as a storage object.
@@ -58,6 +62,14 @@ class DBA_Relational extends PEAR
      * @var string
      */
     var $_driver;
+
+    /**
+     * Table of functions recognized in select/join parsing
+     * @access private
+     * @var array
+     */
+    var $_functions;
+
     // }}}
 
     // {{{ DBA_Relational($home = '', $driver = 'file')
@@ -79,6 +91,10 @@ class DBA_Relational extends PEAR
         $this->_home = $home;
 
         $this->_driver = $driver;
+
+        // we store symbols this way to take advantage of PHP's hash table
+        // implementation of associative arrays
+        $this->_functions = array_flip(get_class_methods('DBA_Functions'));
 
         // create the _tables table. this keeps track of the tables to be used
         // in DBA_Relational as well as which driver to use for each.
@@ -229,6 +245,7 @@ class DBA_Relational extends PEAR
 
         return DBA::drop($tableName, $driver);
     }
+    // }}}
     
     // {{{ getSchema
     /**
@@ -384,31 +401,6 @@ class DBA_Relational extends PEAR
     }
     // }}}
 
-    // {{{ select($tableName, $query, $rows=null)
-    /**
-     * Performs a select on a table. This means that a subset of rows in a
-     * table are filtered and returned based on the query. Accepts any valid
-     * expression of the form '(field == field) || (field > 3)', etc. Using the
-     * expression '*' returns the entire table
-     * SQL analog: 'select * from rows where rawQuery'
-     *
-     * @access  public
-     * @param   string $tableName table on which to operate
-     * @param   string $rawQuery query expression for performing the select
-     * @param   array  $rows rows to select on
-     * @return  mixed  PEAR_Error on failure, the row array on success
-     */
-    function select($tableName, $query, $rows=null)
-    {
-        $result = $this->_openTable($tableName, 'r');
-        if (PEAR::isError($result)) {
-            return $result;
-        } else {
-            return $this->_tables[$tableName]->select($query, $rows);
-        }
-    }
-    // }}}
-
     // {{{ sort($fields, $order='a', $rows)
     /**
      * Sorts rows by field in either ascending or descending order
@@ -516,6 +508,122 @@ class DBA_Relational extends PEAR
         } else {
             return false;
         }
+    }
+    // }}}
+
+    // {{{ function _parseQuery($rawQuery)
+    function _parseQuery($rawQuery)
+    {
+        $PHPQuery = '';
+        $lexer = new Lexer($rawQuery,1);
+        $lexer->symbols = array('and'=>1, 'or'=>1);
+        $token = $lexer->lex();
+        while(!is_null($token)) {
+            switch($token) {
+                case 'and':
+                case 'or':
+                    $PHPQuery .= ' '.$lexer->tokText.' ';
+                    break;
+                case 'ident':
+                    $token = strtolower($lexer->tokText);
+                    if (isset($this->_functions[$token]) {
+                        $PHPQuery .= 'DBA_Functions::'.$token;
+                    } elseif (function_exists($lexer->tokText)) {
+                        $PHPQuery .= $lexer->tokText;
+                    } else {
+                        $prevText = $lexer->tokText;
+                        $token = $lexer->lex();
+                        if ($token == '.') {
+                            $token = $lexer->lex();
+                            if ($token == 'ident') {
+                                $PHPQuery .= '$row[\''.
+                                    $prevText.'.'.$lexer->tokText.'\']';
+                            } else {
+                                return $this->raiseError(
+                                    "invalid token. need field token");
+                            }
+                        } else {
+                            $PHPQuery .= '$row["'.$prevText.'"]';
+                            $lexer->pushBack();
+                        }
+                    }
+                    break;
+                case 'text_val':
+                    $PHPQuery .= '"'.$lexer->tokText.'"';
+                    break;
+                case 'real_val':
+                case 'int_val':
+                default :
+                    $PHPQuery .= $lexer->tokText;
+                    break;
+            }
+            $token = $lexer->lex();
+        }
+        return $PHPQuery;
+    }
+    // }}}
+
+    // {{{ select($tableName, $query, $rows=null)
+    /**
+     * Performs a select on a table. This means that a subset of rows in a
+     * table are filtered and returned based on the query. Accepts any valid
+     * expression of the form '(field == field) || (field > 3)', etc. Using the
+     * expression '*' returns the entire table
+     * SQL analog: 'select * from rows where rawQuery'
+     *
+     * @access  public
+     * @param   string $tableName table on which to operate
+     * @param   string $rawQuery query expression for performing the select
+     * @param   array  $rows rows to select on
+     * @return  mixed  PEAR_Error on failure, the row array on success
+     */
+/*
+    function select($tableName, $query, $rows=null)
+    {
+        $result = $this->_openTable($tableName, 'r');
+        if (PEAR::isError($result)) {
+            return $result;
+        } else {
+            return $this->_tables[$tableName]->select($query, $rows);
+        }
+    }
+*/
+    // }}}
+
+    function select($tableName, $query, $rows=null)
+    {
+        $tables = $this->_parseTableString($tableName);
+
+        $result = $this->_openTable($tables['name'][0],'r');
+        if (PEAR::isError($result))
+            return $result;
+        $rows = $this->_tables[$tables['name'][0]]->getRows();
+        if ($tables['name'][0] == $tables['alias'][0])
+            $tables['alias'][0] = '';
+        $tblObject = new DBA_TempTable(&$rows, $tables['alias'][0]);
+
+        if (strlen($query)) {
+            if ($query == '*') {
+                $PHPQuery = true;
+            } else {
+                $PHPQuery = $this->_parseQuery($query);
+            }
+        } else {
+            $PHPQuery = true;
+        }
+
+        $rows = array();
+
+        $key = $tblObject->firstRow();
+        while ($key !== false) {
+            $row = $tblObject->getRow($key);
+            @eval('$isMatch = ('.$PHPQuery.') ? 1:0;');
+            if ($isMatch)
+                $rows[] = $row;
+            $key = $tblObject->nextRow();
+        }
+
+        return $rows;
     }
     // }}}
 
