@@ -69,6 +69,13 @@ class DBA_Relational extends PEAR
      */
     var $_functions;
 
+    /**
+     * Table of operators recognized in select/join parsing
+     * @access private
+     * @var array
+     */
+    var $_operators;
+
     // }}}
 
     // {{{ DBA_Relational($home = '', $driver = 'file')
@@ -94,6 +101,8 @@ class DBA_Relational extends PEAR
         // we store symbols this way to take advantage of PHP's hash table
         // implementation of associative arrays
         $this->_functions = array_flip(get_class_methods('DBA_Functions'));
+        $this->_operators = array_flip(array('=','<','>','!','(',')','&','|',
+                                             '*','/','+','-','%',','));
 
         // create the _tables table. this keeps track of the tables to be used
         // in DBA_Relational as well as which driver to use for each.
@@ -519,36 +528,29 @@ class DBA_Relational extends PEAR
 
         for($i=0; $i < strlen($rawQuery); $i++) {
             $c = $rawQuery{$i};
-            switch($c) {
-                case "'":
-                case '"':
-                    if (!$inQuote) {
-                        $inQuote = !$inQuote;
-                        $quote = $c;
-                    } elseif ($c == $quote) {
-                        $inQuote = !$inQuote;
-                        $quote = '';
-                    }
-                    break;
-                case ' ':  case '=':  case '<':  case '>':
-                case '!':  case '(':  case ')':  case '&':
-                case '|':  case '*':  case '/':  case '+':
-                case '-':  case '%':  case ',':
-                    if (!$inQuote && strlen($token)) {
-                        $PHPQuery .= $this->_cookIdentToken($token);
-                        $PHPQuery .= $c;
-                        $token = '';
-                    } elseif ($inQuote) {
-                        $token .= $c;
-                    } else {
-                        $PHPQuery .= $c;
-                    }
-                    break;
-                default :
+            if ($c == "'" || $c == "\"") {
+                if (!$inQuote) {
+                    $inQuote = !$inQuote;
+                    $quote = $c;
+                } elseif ($c == $quote) {
+                    $inQuote = !$inQuote;
+                    $quote = '';
+                }
+            } elseif (isset($this->_operators[$c]) || $c == ' ') {
+                if (!$inQuote && strlen($token)) {
+                    $PHPQuery .= $this->_cookIdentToken($token);
+                    $PHPQuery .= $c;
+                    $token = '';
+                } elseif ($inQuote) {
                     $token .= $c;
-                break;
+                } else {
+                    $PHPQuery .= $c;
+                }
+            } else {
+                $token .= $c;
             }
         }
+
         if (strlen($token)) {
             $PHPQuery .= $this->_cookIdentToken($token);
         }
@@ -563,8 +565,7 @@ class DBA_Relational extends PEAR
         if ($token{0} == "'" && $token{0} == "\"") {
             $cookedToken .= $token;
         } elseif ($token == 'null' || $token == 'and' || $token == 'or' ||
-                  $token == 'false' || $token == 'true'
-                  || function_exists($token)) {
+                  $token == 'false' || $token == 'true' || function_exists($token)) {
             $cookedToken .= $token;
         } elseif (isset($this->_functions[$token])) {
             $cookedToken .= 'DBA_Function::'.$token;
