@@ -16,18 +16,20 @@ Table management extension to DBA
             <email>busterb@mail.utexas.edu</email>
             <role>lead</role>
         </maintainer>
+        <maintainer>
+            <name>Jacob Lee</name>
+            <email>jacobswell4u@yahoo.com</email>
+            <role>contributor</role>
+        </maintainer>
     </maintainers>
 
     <release>
         <license>LGPL</license>
-        <version>0.19</version>
-        <date>2002-09-29</date>
+        <version>0.20</version>
+        <date>2002-10-05</date>
         <state>devel</state>
         <notes>
-This is the first release as a separate package from DBA. A notable change is that the format of the schema as stored on disk has changed. Now, we either use php's serialize() or wddx_serialize_value(), rather than a custom algorithm. These should be better for supporting DBA_Relational across programming languages, be faster and remove complexity. However, this is not compatible with old databases, so be sure to dump your old data before upgrading beyond DBA 0.18! Comments on this change are very welcome.
-
-In the works are many improvements to the query algorithms and the long-awaited
-sequence support.
+Added a HTML Table formatting function to Toolbox.php
         </notes>
         <filelist>
             <dir name="/" baseinstalldir="/DBA">

@@ -99,7 +99,7 @@ function quickformToDBA($schema, $auxMeta)
  * @param   array $rows
  * @param   array $fields list of fields to display
  * @param   string $style style to display table in; 'oracle', 'mysql'
- * @return  string
+ * @return  string text-formatted results set
  */
 function formatTextTable($rows, $fields = null, $style = 'oracle')
 {
@@ -146,6 +146,79 @@ function formatTextTable($rows, $fields = null, $style = 'oracle')
             $buffer .= "$wall\n";
             $buffer .= ($style == 'oracle') ? '' : $separator;
         }
+    }
+    return $buffer;
+}
+
+/**
+ * Generates an HTML table from a results set
+ *
+ * This function uses custom CSS classes to define the table style.
+ * A recommended CSS is as follows:
+ *
+ *  // general table style
+ *  .dbaTable {
+ *    border: 1;
+ *    cellspacing: 0;
+ *    cellpadding: 4;
+ *    bordercolordark: white;
+ *    bordercolorlight: black;
+ *  }
+ *  // field style
+ *  .dbaTableField {
+ *    font-weight: bold;
+ *    text-align: center;
+ *    color: black;
+ *    background-color: #CCCCFF;
+ *  }
+ *  // row style
+ *  .dbaTableRow0 {
+ *    font-weight: normal;
+ *    text-align: left;
+ *    color: black;
+ *    background-color: #F4F4F4;
+ *  }
+ *  // alternate row style
+ *  .dbaTableRow1 {
+ *    font-weight: normal;
+ *    text-align: left;
+ *    color: black;
+ *    background-color: #CCCCCC;
+ *  }
+ *
+ * @param   array $rows
+ * @param   array $fields list of fields to display
+ * @return  string HTML-formatted results set
+ */
+function formatHtmlTable($rows, $fields = null)
+{
+    if (is_numeric($rows) or is_string($rows)) return "$rows<br>";
+    if (is_array($rows) && sizeof($rows)) {
+        if (is_null($fields)) {
+            $fields = array_keys(current($rows));
+        }
+        $buffer = '<table class="dbaTable">';
+
+        // print fields
+        $buffer .= '<tr>';
+        foreach ($fields as $field) {
+            $buffer .= '<td class="dbaTableField">'.$field."</td>";
+        }
+        $buffer .= '</tr>';
+
+        // print rows
+        $rowStyle = 0;
+        foreach ($rows as $row) {
+            $buffer .= '<tr>';
+            foreach ($fields as $field) {
+                $buffer .= '<td class="dbaTableRow'.$rowStyle.'">'
+                           .$row[$field].'</td>';
+            }
+            $rowStyle = 1 - $rowStyle;
+            $buffer .= '</tr>';
+        }
+
+        $buffer .= '</table>';
     }
     return $buffer;
 }
