@@ -17,6 +17,7 @@ Table management extension to DBA
             <role>lead</role>
         </maintainer>
         <maintainer>
+            <user>undefined</user>
             <name>Jacob Lee</name>
             <email>jacobswell4u@yahoo.com</email>
             <role>contributor</role>
