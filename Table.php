@@ -696,6 +696,9 @@ class DBA_Table extends PEAR
             } elseif (isset($fieldMeta['not_null'])) {
 
                 return $this->raiseError("$fieldName cannot be null");
+            } elseif (is_null($data[$fieldName])) {
+
+                $c_value = "\x00"; // \x00 is the null value placeholder
             } else {
                 // when all else fails
                 $c_value = null;
@@ -727,7 +730,11 @@ class DBA_Table extends PEAR
         $data = explode(DBA_FIELD_SEPARATOR, $packedData);
         $i = 0;
         foreach ($this->_schema as $fieldName=>$fieldMeta) {
-            $buffer[$fieldName] = $this->_unpackField($fieldName, $data[$i]);
+            if ($data[$i] == "\x00") { // it's a placeholder
+                $buffer[$fieldName] = null;
+            } else {
+                $buffer[$fieldName] = $this->_unpackField($fieldName, $data[$i]);
+            }
             $i++;
         }
         return $buffer;
