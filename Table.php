@@ -984,8 +984,8 @@ class DBA_Table extends PEAR
      */
     function getRows($rowKeys=null)
     {
-        $rows = array();
         if ($this->_dba->isOpen()) {
+            $rows = array();
             if (is_null($rowKeys)) {
                 $key = $this->_dba->firstkey();
                 while ($key !== false) {
@@ -999,10 +999,28 @@ class DBA_Table extends PEAR
                     $rows[$key] = $this->unpackRow($this->_dba->fetch($key));
                 }
             }
+            return $rows;
         } else {
             return $this->raiseError('table not open');
         }
-        return $rows;
+    }
+    // }}}
+
+    // {{{
+    /**
+     * Returns all keys in the table
+     * Similar to PostgrSQL's row ID's
+     *
+     * @access  public
+     * @return  mixed  array
+     */
+    function getKeys()
+    {
+        if ($this->_dba->isOpen()) {
+            return $this->_dba->getkeys();
+        } else {
+            return $this->raiseError('table not open');
+        }
     }
     // }}}
 
