@@ -1102,7 +1102,7 @@ class DBA_Table extends PEAR
                 if (!$inQuote && strlen($token)) {
                     $PHPQuery .= DBA_Table::_cookToken($token, $isField);
                     if ($isField) {
-                        $fields.push($token);
+                        $fields[] = $token;
                     }
                     $PHPQuery .= $c;
                     $token = '';
