@@ -957,7 +957,7 @@ class DBA_Table extends PEAR
                     if ($key !== DBA_SCHEMA_KEY) {
                       $rows[$key] = $this->_unpackRow($this->_dba->fetch($key));
                     }
-                    $key = $this->_dba->nextkey($key);
+                    $key = $this->_dba->nextkey();
                 }
             } else {
                 foreach ($rowKeys as $key) {
