@@ -16,12 +16,6 @@ Table management extension to DBA
             <email>busterb@mail.utexas.edu</email>
             <role>lead</role>
         </maintainer>
-        <maintainer>
-            <user>undefined</user>
-            <name>Jacob Lee</name>
-            <email>jacobswell4u@yahoo.com</email>
-            <role>contributor</role>
-        </maintainer>
     </maintainers>
 
     <release>
@@ -39,6 +33,7 @@ Table management extension to DBA
                 <file role="php">Relational.php</file>
                 <file role="php">Table.php</file>
                 <file role="php">Toolbox.php</file>
+                <file role="php">Functions.php</file>
                 <dir name="tests" role="test">
                     <file role="test">empSchema.php</file>
                     <file role="test">hatSchema.php</file>

@@ -22,6 +22,7 @@
 //
 require_once 'PEAR.php';
 require_once 'DBA.php';
+require_once 'DBA/Functions.php';
 
 if (!function_exists('floatval')) {
     function floatval( $strValue ) {
@@ -311,8 +312,7 @@ class DBA_Table extends PEAR
                 }
             }
 
-            if (isset($meta['default_type']) && 
-                ($meta['default_type'] == 'function') && 
+            if (isset($meta['default_type']) && ($meta['default_type'] == 'function') && 
                 ($meta['default'] != 'time()')) {
                     return $this->raiseError($meta['default'].' is not a valid function');
             }
@@ -685,7 +685,7 @@ class DBA_Table extends PEAR
                     // use the default value
                     if ($fieldMeta['default_type'] == 'function') {
                         $c_value = $this->_packField($fieldName,
-                           eval('return $this->func_'.
+                           eval('return DBA_Functions::'.
                                   $this->_schema[$fieldName]['default'].';'));
                     } else {
                         $c_value = $this->_packField($fieldName,
@@ -1302,57 +1302,6 @@ class DBA_Table extends PEAR
             }
         }
         return $tmp;
-    }
-    // }}}
-
-    // {{{ func_max($field, $rows)
-    function func_max($field, $rows)
-    {
-        if (is_null($rows) || !sizeof($rows)) return null;
-        return max(DBA_Table::_getColumn($field, $rows));
-    }
-    // }}}
-
-    // {{{ func_min($field, $rows)
-    function func_min($field, $rows)
-    {
-        if (is_null($rows) || !sizeof($rows)) return null;
-        return min(DBA_Table::_getColumn($field, $rows));
-    }
-    // }}}
-
-    // {{{ func_sum($field, $rows)
-    function func_sum($field, $rows)
-    {
-        if (is_null($rows) || !sizeof($rows)) return null;
-        return array_sum(DBA_Table::_getColumn($field, $rows));
-    }
-    // }}}
-
-    // {{{ func_avg($field, $rows)
-    function func_avg($field, $rows)
-    {
-        if (is_null($rows) || !sizeof($rows)) return null;
-        return array_sum(DBA_Table::_getColumn($field, $rows)) / sizeof($rows);
-    }
-    // }}}
-
-    // {{{ func_count($field, $rows)
-    function func_count($rows)
-    {
-        if (is_null($rows) || !sizeof($rows)) return null;
-        return count($rows);
-    }
-    // }}}
-
-    // {{{ func_time()
-    /**
-     * Internal function for returning the current time
-     *
-     * @access private
-     */
-    function func_time() {
-        return time();
     }
     // }}}
 
