@@ -226,7 +226,7 @@ class DBA_Table extends PEAR
                 }
                 $this->_dba->replace(DBA_SCHEMA_KEY, $schema);
             } else {
-                echo "No schema, what's the point :P\n";
+                return PEAR::raiseError("No schema, what's the point :P\n");
             }
         }
         $this->_maxKey = null;

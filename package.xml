@@ -34,6 +34,7 @@ Table management extension to DBA
                 <file role="php">Table.php</file>
                 <file role="php">Toolbox.php</file>
                 <file role="php">Functions.php</file>
+                <file role="php">TempTable.php</file>
                 <dir name="tests" role="test">
                     <file role="test">empSchema.php</file>
                     <file role="test">hatSchema.php</file>

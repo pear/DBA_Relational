@@ -22,6 +22,7 @@
 
 require_once 'PEAR.php';
 require_once 'DBA/Table.php';
+require_once 'DBA/TempTable.php';
 
 /**
  * A relational database manager using DBA_Table as a storage object.
@@ -205,6 +206,30 @@ class DBA_Relational extends PEAR
     }
     // }}}
 
+    // {{{ dropTable
+    /**
+     * Deletes a table permanently
+     *
+     * @access  public
+     * @param   string  $tableName name of the table to delete
+     * @param   string  $driver driver that created the table
+     * @return  object  PEAR_Error on failure
+     */
+    function dropTable($tableName, $driver=null)
+    {
+        if (is_null($driver)) {
+            $driver = $this->_driver;
+        }
+        if (isset($this->_tables[$tableName])) {
+            if (PEAR::isError($result = $this->_tables[$tableName]->close())) {
+                return $result;
+            }
+            unset($this->_tables[$tableName]);
+        }
+
+        return DBA::drop($tableName, $driver);
+    }
+    
     // {{{ getSchema
     /**
      * Returns an array with the stored schema for the table
