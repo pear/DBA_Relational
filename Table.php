@@ -168,9 +168,11 @@ class DBA_Table extends PEAR
 
         // store symbols this way to take advantage of PHP's hash table
         // implementation of associative arrays
+/*
         $this->_functions = array_flip(get_class_methods('DBA_Functions'));
         $this->_operators = array_flip(array('=','<','>','!','(',')','&','|',
                                              '*','/','+','-','%',','));
+*/
     }
     // }}}
 
@@ -1020,6 +1022,41 @@ class DBA_Table extends PEAR
     // {{{ function _parsePHPQuery($rawQuery)
     function _parsePHPQuery($rawQuery)
     {
+		global $_dba_functions, $_dba_operators;
+
+		if (!isset($_dba_functions)) {
+			$_dba_functions = array_flip(get_class_methods('DBA_Functions'));
+		}
+		if (!isset($_dba_operators)) {
+			$_dba_operators = array_flip(array('=','<','>','!','(',')','&','|',
+                                             '*','/','+','-','%',','));
+		}
+		if (!function_exists(_cookIdentToken)) {
+
+		// {{{ function _cookIdentToken($token)
+		function _cookIdentToken($token)
+		{
+			global $_dba_functions;
+
+			// quoted string
+			if ($token{0} == "'" || $token{0} == '"') {
+				$cookedToken .= $token;
+			} elseif ($token == 'null' || $token == 'and' || $token == 'or' ||
+					  $token == 'false' || $token == 'true' ||
+					  function_exists($token)) {
+				$cookedToken .= $token;
+			} elseif (isset($_dba_functions[$token])) {
+				$cookedToken .= 'DBA_Function::'.$token;
+			} elseif (!is_numeric($token)) {
+				$cookedToken .= '$row[\''.$token.'\']';
+			} else {
+				$cookedToken .= $token;
+			}
+			return $cookedToken;
+		}
+		// }}}
+		}
+
         $inQuote = false;
         $PHPQuery = '';
         $token = '';
@@ -1035,9 +1072,9 @@ class DBA_Table extends PEAR
                     $quote = '';
                 }
                 $token .= $c;
-            } elseif (isset($this->_operators[$c]) || $c == ' ') {
+            } elseif (isset($_dba_operators[$c]) || $c == ' ') {
                 if (!$inQuote && strlen($token)) {
-                    $PHPQuery .= $this->_cookIdentToken($token);
+                    $PHPQuery .= _cookIdentToken($token);
                     $PHPQuery .= $c;
                     $token = '';
                 } elseif ($inQuote) {
@@ -1045,36 +1082,19 @@ class DBA_Table extends PEAR
                 } else {
                     $PHPQuery .= $c;
                 }
+			} elseif ($c == "\t" || $c == "\n" || $c == "\r") {
+				if ($inQuote) {
+					$token .= $c;
+				}
             } else {
                 $token .= $c;
             }
         }
 
         if (strlen($token)) {
-            $PHPQuery .= $this->_cookIdentToken($token);
+            $PHPQuery .= _cookIdentToken($token);
         }
         return $PHPQuery;
-    }
-    // }}}
-
-    // {{{ function _cookIdentToken($token)
-    function _cookIdentToken($token)
-    {
-        // quoted string
-        if ($token{0} == "'" || $token{0} == '"') {
-            $cookedToken .= $token;
-        } elseif ($token == 'null' || $token == 'and' || $token == 'or' ||
-                  $token == 'false' || $token == 'true' ||
-                  function_exists($token)) {
-            $cookedToken .= $token;
-        } elseif (isset($this->_functions[$token])) {
-            $cookedToken .= 'DBA_Function::'.$token;
-        } elseif (!is_numeric($token)) {
-            $cookedToken .= '$row[\''.$token.'\']';
-        } else {
-            $cookedToken .= $token;
-        }
-        return $cookedToken;
     }
     // }}}
 
