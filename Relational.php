@@ -181,7 +181,7 @@ class DBA_Relational extends PEAR
      */
     function tableExists($tableName)
     {
-        return DBA::exists($this->_home.$tableName, $this->_driver);
+        return DBA::db_exists($this->_home.$tableName, $this->_driver);
     }
     // }}}
 
