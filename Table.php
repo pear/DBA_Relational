@@ -185,12 +185,13 @@ class DBA_Table extends PEAR
         // fetch the field descriptor at the key, DBA_SCHEMA_KEY
         if (!PEAR::isError($schema = $this->_dba->fetch(DBA_SCHEMA_KEY))) {
 
-            // unpack the field schema into an array
-            $this->_schema = $this->_unpackSchema($schema);
-
-            if (PEAR::isError($this->_schema)) {
+            // unpack the field schema
+            $schema = $this->_unpackSchema($schema);
+            if (PEAR::isError($schema)) {
                 $this->close();
+                return $schema;
             }
+            $this->_schema = $schema;
 
         } else {
             return $this->raiseError('Table is missing field descriptor.'.
@@ -213,6 +214,9 @@ class DBA_Table extends PEAR
             // pack up the field structure and store it back in the table
             if (isset($this->_schema)) {
                 $schema = $this->_packSchema($this->_schema);
+                if (DBA::isError($schema)) {
+                    return $schema;
+                }
                 $this->_dba->replace(DBA_SCHEMA_KEY, $schema);
             } else {
                 echo "No schema, what's the point :P\n";
@@ -232,7 +236,7 @@ class DBA_Table extends PEAR
      * @param   array  $schema field schema for the table
      * @return  object PEAR_Error on failure
      */
-    function create($tableName, $schema, $driver)
+    function create($tableName, $schema, $driver, $format='php')
     {
         // validate the schema
         $v_schema = DBA_Table::_validateSchema($schema);
@@ -338,7 +342,7 @@ class DBA_Table extends PEAR
      */
     function tableExists($tableName)
     {
-        return DBA::exists($tableName, $this->_driver);
+        return DBA::db_exists($tableName, $this->_driver);
     }
     // }}}
 
@@ -578,22 +582,19 @@ class DBA_Table extends PEAR
      * @param   array  $schema schema to pack
      * @return  string the packed schema
      */
-    function _packSchema($schema)
+    function _packSchema($schema, $format = 'php')
     {
-        foreach ($schema as $fieldName => $fieldMeta) {
-            $buffer = $fieldName;
-
-            foreach ($fieldMeta as $attribute => $value) {
-                $buffer .= DBA_OPTION_SEPARATOR.$attribute.'=';
-                if (is_array($value)) {
-                    $buffer .= implode(DBA_DOMAIN_SEPARATOR,$value);
-                } else {
-                    $buffer .= $value;
+        switch ($format) {
+            case 'php':
+                return serialize($schema);
+            case 'wddx':
+                if (!function_exists('wddx_serialize_value')) {
+                    return $this->raiseError('wddx extension not found!');
                 }
-            }
-            $fields[] = $buffer;
+                return wddx_serialize_value($schema);
+            default:
+                return $this->raiseError('Unknown schema format: '.$format);
         }
-        return implode(DBA_FIELD_SEPARATOR, $fields);
     }
     // }}}
 
@@ -606,35 +607,31 @@ class DBA_Table extends PEAR
      * @param   string  $rawFieldString data to be unpacked into the schema
      * @return  array
      */
-    function _unpackSchema($rawFieldString)
+    function _unpackSchema($rawSchema)
     {
-        $rawFields = explode(DBA_FIELD_SEPARATOR, $rawFieldString);
+        if ($rawSchema{0} == 'a') {
+            $schema = unserialize($rawSchema);
+        } elseif ($rawSchema{0} == '<') {
+            if (!function_exists('wddx_deserialize')) {
+                return $this->raiseError('wddx extension not found!');
+            }
+            $schema = wddx_deserialize($rawSchema);
+        } else {
+            return $this->raiseError('Unknown schema format');
+        }
+
         $primaryKey = array();
-        foreach ($rawFields as $rawField) {
-            $rawMeta = explode(DBA_OPTION_SEPARATOR, $rawField);
-            $name = array_shift($rawMeta);
-            foreach ($rawMeta as $rawAttribute) {
-                list($attribute,$rawValue) = explode('=',$rawAttribute);
-                switch ($attribute) {
-                    case 'domain':
-                        $value = explode(DBA_DOMAIN_SEPARATOR,$rawValue);
-                        break;
-                    case 'primary_key':
-                        // we can have more than one primary key; they are
-                        // concatenated into one
-                        $primaryKey[$name] = true;
-                    default:
-                        $value = $rawValue;
-                }
-                $fields[$name][$attribute] = $value;
+        foreach ($schema as $name => $meta) {
+            if (isset($meta['primary_key'])) {
+                $primaryKey[$name] = true;
             }
         }
         if (sizeof($primaryKey)) {
-            $this->_primaryKey =& $primaryKey;
+            $this->_primaryKey = $primaryKey;
         } else {
             $this->_primaryKey = array('_rowid'=>true);
         }
-        return $fields;
+        return $schema;
     }
     // }}}
 

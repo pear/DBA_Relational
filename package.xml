@@ -42,5 +42,9 @@ No notes is good notes.
                 </dir>
             </dir>
         </filelist>
+    <deps>
+        <dep type="php" rel="ge" version="4.0.4pl1" />
+        <dep type="pkg" rel="has">DBA</dep>
+    </deps>
     </release>
 </package>
