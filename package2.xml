@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<package packagerversion="1.5.1" version="2.0" xmlns="http://pear.php.net/dtd/package-2.0" xmlns:tasks="http://pear.php.net/dtd/tasks-1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://pear.php.net/dtd/tasks-1.0
+http://pear.php.net/dtd/tasks-1.0.xsd
+http://pear.php.net/dtd/package-2.0
+http://pear.php.net/dtd/package-2.0.xsd">
+ <name>DBA_Relational</name>
+ <channel>pear.php.net</channel>
+ <summary>Berkely-style database abstraction class</summary>
+ <description>Table management extension to DBA
+    
+ </description>
+ <lead>
+  <name>Brent Cook</name>
+  <user>busterb</user>
+  <email>busterb@mail.utexas.edu</email>
+  <active>no</active>
+ </lead>
+ <lead>
+  <name>Erich Enke</name>
+  <user>epte</user>
+  <email>erich.enke@gmail.com</email>
+  <active>no</active>
+ </lead>
+ <lead>
+  <name>David Coallier</name>
+  <user>davidc</user>
+  <email>davidc@agoraproduction.com</email>
+  <active>yes</active>
+ </lead>
+ <date>2007-04-16</date>
+ <time>04:15:31</time>
+ <version>
+  <release>0.2.0</release>
+  <api>0.2.0</api>
+ </version>
+ <stability>
+  <release>beta</release>
+  <api>beta</api>
+ </stability>
+ <license uri="http://www.gnu.org/copyleft/lesser.html">LGPL</license>
+ <notes>* Released with package2
+ 
+* Added a HTML Table formatting function to Toolbox.php
+* Added new unary functions (avg, min, max, sum, count)
+* Bug fixes
+       
+ </notes>
+ <contents>
+  <dir name="/">
+   <dir name="docs">
+    <file baseinstalldir="/DBA" name="Examples.txt" role="doc" />
+   </dir> <!-- /docs -->
+   <dir name="tests">
+    <file baseinstalldir="/DBA" name="empSchema.php" role="test" />
+    <file baseinstalldir="/DBA" name="hatSchema.php" role="test" />
+    <file baseinstalldir="/DBA" name="test_relational.php" role="test" />
+    <file baseinstalldir="/DBA" name="test_table.php" role="test" />
+   </dir> <!-- /tests -->
+   <file baseinstalldir="/DBA" name="Functions.php" role="php" />
+   <file baseinstalldir="/DBA" name="Relational.php" role="php" />
+   <file baseinstalldir="/DBA" name="Table.php" role="php" />
+   <file baseinstalldir="/DBA" name="TempTable.php" role="php" />
+   <file baseinstalldir="/DBA" name="Toolbox.php" role="php" />
+  </dir> <!-- / -->
+ </contents>
+ <dependencies>
+  <required>
+   <php>
+    <min>4.0.4pl1</min>
+   </php>
+   <pearinstaller>
+    <min>1.4.0b1</min>
+   </pearinstaller>
+   <package>
+    <name>DBA</name>
+    <channel>pear.php.net</channel>
+   </package>
+  </required>
+ </dependencies>
+ <phprelease />
+</package>
