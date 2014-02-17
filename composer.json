@@ -1,0 +1,25 @@
+{
+    "authors": [
+        {
+            "email": "busterb@mail.utexas.edu",
+            "name": "Brent Cook",
+            "role": "Lead"
+        }
+    ],
+    "autoload": {
+        "classmap": [
+            "./"
+        ]
+    },
+    "description": "More info available on: http://pear.php.net/package/DBA_Relational",
+    "license": "LGPL",
+    "name": "pear/dba_relational",
+    "support": {
+        "issues": "http:///bugs/search.php?cmd=display&package_name[]=DBA_Relational",
+        "source": "https://github.com/pear/DBA_Relational"
+    },
+    "type": "library",
+    "require-dev": {
+        "phpunit/phpunit": "*"
+    }
+}
